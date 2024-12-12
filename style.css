@@ -4,6 +4,9 @@ body {
     margin: 0;
     padding: 0;
     background-color: #f4f4f4;
+    display: flex;
+    flex-direction: column;
+    height: 100vh; /* Full screen height */
 }
 
 h1 {
@@ -13,10 +16,13 @@ h1 {
 
 .video-container {
     position: relative;
-    display: inline-block;
     width: 90%; /* Adjust width to fit your needs */
     max-width: 600px;
-    margin: 20px auto; /* Center the video container */
+    margin: 0 auto; /* Center the video container */
+    flex-grow: 1; /* Take up available space */
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 video, canvas {
@@ -35,12 +41,9 @@ canvas {
 }
 
 .controls {
-    margin: 20px auto; /* Add spacing between video and buttons */
+    margin: 10px 0; /* Add spacing at the bottom */
     text-align: center;
-    display: inline-block;
-    width: 90%;
-    max-width: 600px;
-    position: relative;
+    width: 100%;
     z-index: 10; /* Ensure buttons are above video and canvas */
 }
 
