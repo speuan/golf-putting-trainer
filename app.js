@@ -43,22 +43,39 @@ function captureFrame() {
 
 function playbackFrames() {
     const video = document.getElementById('cameraFeed');
+    const canvas = document.getElementById('captureCanvas');
+    const context = canvas.getContext('2d');
+
     let playbackIndex = 0;
+
+    // Ensure canvas matches video dimensions
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
 
     const playbackInterval = setInterval(() => {
         if (playbackIndex >= capturedFrames.length) {
             clearInterval(playbackInterval);
-            video.srcObject = currentStream; // Restore live video feed
+            canvas.style.display = "none"; // Hide canvas after playback
+            video.style.display = "block"; // Restore video feed display
             return;
         }
 
-        // Display each frame as a static image on the video element
-        video.srcObject = null; // Disconnect live stream temporarily
-        video.src = capturedFrames[playbackIndex];
-        video.play(); // Play each frame
+        // Display the current frame on the canvas
+        const frameDataURL = capturedFrames[playbackIndex];
+        const img = new Image();
+        img.onload = () => {
+            context.drawImage(img, 0, 0, canvas.width, canvas.height);
+        };
+        img.src = frameDataURL;
+
         playbackIndex++;
-    }, 100); // Change frames every 100ms (~10 FPS)
+    }, 100); // Display each frame for 100ms (~10 FPS)
+
+    // Show the canvas and hide the video during playback
+    canvas.style.display = "block";
+    video.style.display = "none";
 }
+
 
 document.getElementById('switchCamera').addEventListener('click', () => {
     currentFacingMode = currentFacingMode === "environment" ? "user" : "environment";
