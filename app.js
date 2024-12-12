@@ -3,8 +3,8 @@ let currentFacingMode = "environment";
 let isRecording = false;
 let frameCaptureInterval = null;
 const capturedFrames = []; // Store captured frames as data URLs
-let initialFrameWidth = 0; // Initial video frame width
-let initialFrameHeight = 0; // Initial video frame height
+let initialRenderedWidth = 0; // Initial rendered video frame width
+let initialRenderedHeight = 0; // Initial rendered video frame height
 
 async function startCamera(facingMode) {
     const video = document.getElementById('cameraFeed');
@@ -21,13 +21,14 @@ async function startCamera(facingMode) {
         video.srcObject = stream;
         currentStream = stream; // Save the current stream
 
-        // Wait for the video to load metadata
+        // Wait for the video to load its metadata and render
         video.onloadedmetadata = () => {
-            initialFrameWidth = video.videoWidth;
-            initialFrameHeight = video.videoHeight;
+            // Get the rendered size of the video element
+            const rect = video.getBoundingClientRect();
+            initialRenderedWidth = rect.width;
+            initialRenderedHeight = rect.height;
 
-            // Log dimensions for debugging
-            console.log(`Video dimensions: ${initialFrameWidth}x${initialFrameHeight}`);
+            console.log(`Rendered video size: ${initialRenderedWidth}x${initialRenderedHeight}`);
         };
     } catch (error) {
         console.error("Error accessing camera: ", error);
@@ -40,9 +41,9 @@ function captureFrame() {
     const canvas = document.getElementById('captureCanvas');
     const context = canvas.getContext('2d');
 
-    // Set canvas dimensions to match the initial video dimensions
-    canvas.width = initialFrameWidth;
-    canvas.height = initialFrameHeight;
+    // Set canvas dimensions to match the rendered video dimensions
+    canvas.width = initialRenderedWidth;
+    canvas.height = initialRenderedHeight;
 
     // Draw the current video frame onto the canvas
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
@@ -77,9 +78,9 @@ function playbackFrames() {
         return;
     }
 
-    // Set the canvas size to the initial video frame dimensions
-    canvas.width = initialFrameWidth;
-    canvas.height = initialFrameHeight;
+    // Set the canvas size to match the initial rendered video size
+    canvas.width = initialRenderedWidth;
+    canvas.height = initialRenderedHeight;
 
     let playbackIndex = 0;
 
