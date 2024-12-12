@@ -7,17 +7,30 @@ body {
 }
 
 h1 {
-    margin: 20px 0;
+    margin: 20px 10px;
     color: #333;
 }
 
-video {
-    display: block;
-    margin: 20px auto;
-    width: 90%;
+.video-container {
+    position: relative;
+    display: inline-block;
+    width: 90%; /* Adjust width to fit your needs */
     max-width: 600px;
+}
+
+video, canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%; /* Match container width */
+    height: auto; /* Maintain aspect ratio */
     border: 2px solid #ccc;
     border-radius: 10px;
+}
+
+canvas {
+    pointer-events: none; /* Prevent interaction */
+    z-index: 1; /* Overlay canvas above video */
 }
 
 .controls {
