@@ -3,6 +3,8 @@ let currentFacingMode = "environment";
 let isRecording = false;
 let frameCaptureInterval = null;
 const capturedFrames = []; // Store captured frames as image data URLs
+let frameWidth = 0; // Width of frames during recording
+let frameHeight = 0; // Height of frames during recording
 
 async function startCamera(facingMode) {
     const video = document.getElementById('cameraFeed');
@@ -29,9 +31,13 @@ function captureFrame() {
     const canvas = document.getElementById('captureCanvas');
     const context = canvas.getContext('2d');
 
-    // Set canvas dimensions to match video dimensions
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
+    // Set canvas dimensions to match video dimensions (once during recording start)
+    if (frameWidth === 0 || frameHeight === 0) {
+        frameWidth = video.videoWidth;
+        frameHeight = video.videoHeight;
+        canvas.width = frameWidth;
+        canvas.height = frameHeight;
+    }
 
     // Draw the current video frame onto the canvas
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
@@ -41,16 +47,28 @@ function captureFrame() {
     capturedFrames.push(frameDataURL);
 }
 
+function stopRecording() {
+    if (isRecording) {
+        isRecording = false;
+        clearInterval(frameCaptureInterval);
+        document.getElementById('recordButton').disabled = false;
+        document.getElementById('stopButton').disabled = true;
+        document.getElementById('playbackButton').disabled = false;
+    }
+}
+
 function playbackFrames() {
+    stopRecording(); // Ensure recording is stopped before playback
+
     const video = document.getElementById('cameraFeed');
     const canvas = document.getElementById('captureCanvas');
     const context = canvas.getContext('2d');
 
-    let playbackIndex = 0;
+    // Set canvas size to match the recorded frames
+    canvas.width = frameWidth;
+    canvas.height = frameHeight;
 
-    // Ensure canvas matches video dimensions
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
+    let playbackIndex = 0;
 
     const playbackInterval = setInterval(() => {
         if (playbackIndex >= capturedFrames.length) {
@@ -76,7 +94,6 @@ function playbackFrames() {
     video.style.display = "none";
 }
 
-
 document.getElementById('switchCamera').addEventListener('click', () => {
     currentFacingMode = currentFacingMode === "environment" ? "user" : "environment";
     startCamera(currentFacingMode);
@@ -88,18 +105,14 @@ document.getElementById('recordButton').addEventListener('click', () => {
         isRecording = true;
         document.getElementById('recordButton').disabled = true;
         document.getElementById('stopButton').disabled = false;
+        frameWidth = 0; // Reset frame size
+        frameHeight = 0;
         frameCaptureInterval = setInterval(captureFrame, 100); // Capture a frame every 100ms (~10 FPS)
     }
 });
 
 document.getElementById('stopButton').addEventListener('click', () => {
-    if (isRecording) {
-        isRecording = false;
-        clearInterval(frameCaptureInterval);
-        document.getElementById('recordButton').disabled = false;
-        document.getElementById('stopButton').disabled = true;
-        document.getElementById('playbackButton').disabled = false;
-    }
+    stopRecording();
 });
 
 document.getElementById('playbackButton').addEventListener('click', () => {
