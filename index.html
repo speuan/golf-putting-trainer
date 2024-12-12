@@ -9,7 +9,13 @@
 <body>
     <h1>Golf Putting Trainer</h1>
     <video id="cameraFeed" autoplay playsinline></video>
-    <button id="switchCamera">Switch Camera</button>
+    <div class="controls">
+        <button id="switchCamera">Switch Camera</button>
+        <button id="recordButton">Record</button>
+        <button id="stopButton" disabled>Stop</button>
+        <button id="playbackButton" disabled>Playback</button>
+    </div>
+    <canvas id="captureCanvas" style="display:none;"></canvas>
     <script src="app.js"></script>
 </body>
 </html>

@@ -20,8 +20,12 @@ video {
     border-radius: 10px;
 }
 
+.controls {
+    margin: 20px 0;
+}
+
 button {
-    margin-top: 20px;
+    margin: 5px;
     padding: 10px 20px;
     font-size: 16px;
     border: none;
@@ -31,6 +35,11 @@ button {
     cursor: pointer;
 }
 
-button:hover {
+button:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+}
+
+button:hover:enabled {
     background-color: #0056b3;
 }
