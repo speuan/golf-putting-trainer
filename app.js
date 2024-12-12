@@ -2,7 +2,7 @@ let currentStream = null;
 let currentFacingMode = "environment";
 let isRecording = false;
 let frameCaptureInterval = null;
-const capturedFrames = []; // Store captured frames as image data URLs
+const capturedFrames = []; // Store captured frames as objects: { dataURL, width, height }
 
 async function startCamera(facingMode) {
     const video = document.getElementById('cameraFeed');
@@ -29,16 +29,20 @@ function captureFrame() {
     const canvas = document.getElementById('captureCanvas');
     const context = canvas.getContext('2d');
 
-    // Set canvas dimensions to match the live video dimensions
+    // Set canvas dimensions to match live video dimensions
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
 
     // Draw the current video frame onto the canvas
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    // Save the frame as an image data URL
+    // Save the frame data URL and dimensions
     const frameDataURL = canvas.toDataURL('image/png');
-    capturedFrames.push(frameDataURL);
+    capturedFrames.push({
+        dataURL: frameDataURL,
+        width: canvas.width,
+        height: canvas.height,
+    });
 }
 
 function stopRecording() {
@@ -61,9 +65,15 @@ function playbackFrames() {
     const canvas = document.getElementById('captureCanvas');
     const context = canvas.getContext('2d');
 
-    // Set the canvas size to match the live feed dimensions
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
+    if (capturedFrames.length === 0) {
+        alert("No frames to playback!");
+        return;
+    }
+
+    // Use the dimensions of the first frame for consistent playback
+    const firstFrame = capturedFrames[0];
+    canvas.width = firstFrame.width;
+    canvas.height = firstFrame.height;
 
     let playbackIndex = 0;
 
@@ -76,12 +86,12 @@ function playbackFrames() {
         }
 
         // Display the current frame on the canvas
-        const frameDataURL = capturedFrames[playbackIndex];
+        const frame = capturedFrames[playbackIndex];
         const img = new Image();
         img.onload = () => {
             context.drawImage(img, 0, 0, canvas.width, canvas.height);
         };
-        img.src = frameDataURL;
+        img.src = frame.dataURL;
 
         playbackIndex++;
     }, 100); // Display each frame for 100ms (~10 FPS)
