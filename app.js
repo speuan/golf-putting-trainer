@@ -21,10 +21,13 @@ async function startCamera(facingMode) {
         video.srcObject = stream;
         currentStream = stream; // Save the current stream
 
-        // Wait for the video to load its metadata to capture its dimensions
+        // Wait for the video to load metadata
         video.onloadedmetadata = () => {
             initialFrameWidth = video.videoWidth;
             initialFrameHeight = video.videoHeight;
+
+            // Log dimensions for debugging
+            console.log(`Video dimensions: ${initialFrameWidth}x${initialFrameHeight}`);
         };
     } catch (error) {
         console.error("Error accessing camera: ", error);
@@ -69,7 +72,12 @@ function playbackFrames() {
     const canvas = document.getElementById('captureCanvas');
     const context = canvas.getContext('2d');
 
-    // Use the initial video frame dimensions for playback
+    if (capturedFrames.length === 0) {
+        alert("No frames to playback!");
+        return;
+    }
+
+    // Set the canvas size to the initial video frame dimensions
     canvas.width = initialFrameWidth;
     canvas.height = initialFrameHeight;
 
@@ -100,4 +108,27 @@ function playbackFrames() {
 }
 
 document.getElementById('switchCamera').addEventListener('click', () => {
-    currentFacingMode 
+    currentFacingMode = currentFacingMode === "environment" ? "user" : "environment";
+    startCamera(currentFacingMode);
+});
+
+document.getElementById('recordButton').addEventListener('click', () => {
+    if (!isRecording) {
+        capturedFrames.length = 0; // Clear any previously captured frames
+        isRecording = true;
+        document.getElementById('recordButton').disabled = true;
+        document.getElementById('stopButton').disabled = false;
+        frameCaptureInterval = setInterval(captureFrame, 100); // Capture a frame every 100ms (~10 FPS)
+    }
+});
+
+document.getElementById('stopButton').addEventListener('click', () => {
+    stopRecording();
+});
+
+document.getElementById('playbackButton').addEventListener('click', () => {
+    playbackFrames();
+});
+
+// Start with the default camera (rear)
+startCamera(currentFacingMode);
