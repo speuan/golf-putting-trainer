@@ -1,5 +1,5 @@
 let currentStream = null;
-let currentFacingMode = "environment";
+let currentFacingMode = "environment"; // Default to rear camera
 let isRecording = false;
 let frameCaptureInterval = null;
 const capturedFrames = []; // Store captured frames as data URLs
@@ -21,19 +21,31 @@ async function startCamera(facingMode) {
         video.srcObject = stream;
         currentStream = stream; // Save the current stream
 
-        // Wait for the video to load its metadata and render
+        // Wait for the video to load metadata and render
         video.onloadedmetadata = () => {
-            // Get the rendered size of the video element
-            const rect = video.getBoundingClientRect();
-            initialRenderedWidth = rect.width;
-            initialRenderedHeight = rect.height;
-
-            console.log(`Rendered video size: ${initialRenderedWidth}x${initialRenderedHeight}`);
+            updateVideoDimensions(video);
         };
     } catch (error) {
         console.error("Error accessing camera: ", error);
         alert("Unable to access the camera. Please check permissions and try again.");
     }
+}
+
+function updateVideoDimensions(video) {
+    // Get the rendered size of the video element
+    const rect = video.getBoundingClientRect();
+    initialRenderedWidth = rect.width;
+    initialRenderedHeight = rect.height;
+
+    // Update the canvas dimensions and placement to match the video
+    const canvas = document.getElementById('captureCanvas');
+    canvas.style.position = "absolute";
+    canvas.style.top = `${rect.top}px`;
+    canvas.style.left = `${rect.left}px`;
+    canvas.style.width = `${rect.width}px`;
+    canvas.style.height = `${rect.height}px`;
+
+    console.log(`Updated video dimensions: ${rect.width}x${rect.height}`);
 }
 
 function captureFrame() {
@@ -78,9 +90,11 @@ function playbackFrames() {
         return;
     }
 
-    // Set the canvas size to match the initial rendered video size
+    // Set the canvas size and placement to match the initial rendered video size
     canvas.width = initialRenderedWidth;
     canvas.height = initialRenderedHeight;
+    canvas.style.display = "block";
+    video.style.display = "none";
 
     let playbackIndex = 0;
 
@@ -102,10 +116,6 @@ function playbackFrames() {
 
         playbackIndex++;
     }, 100); // Display each frame for 100ms (~10 FPS)
-
-    // Show the canvas and hide the video during playback
-    canvas.style.display = "block";
-    video.style.display = "none";
 }
 
 document.getElementById('switchCamera').addEventListener('click', () => {
