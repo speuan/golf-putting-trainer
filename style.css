@@ -10,14 +10,14 @@ body {
 }
 
 h1 {
-    margin: 20px 10px;
+    margin: 10px 10px;
     color: #333;
 }
 
 .video-container {
     position: relative;
-    width: 90%; /* Adjust width to fit your needs */
-    max-width: 600px;
+    width: 85%; /* Reduced by 5% */
+    max-width: 570px; /* Maintain consistent scaling */
     margin: 0 auto; /* Center the video container */
     flex-grow: 1; /* Take up available space */
     display: flex;
@@ -41,7 +41,7 @@ canvas {
 }
 
 .controls {
-    margin: 10px 0; /* Add spacing at the bottom */
+    margin: 5px 0; /* Minimized gap */
     text-align: center;
     width: 100%;
     z-index: 10; /* Ensure buttons are above video and canvas */
