@@ -2,7 +2,9 @@ let currentStream = null;
 let currentFacingMode = "environment";
 let isRecording = false;
 let frameCaptureInterval = null;
-const capturedFrames = []; // Store captured frames as objects: { dataURL, width, height }
+const capturedFrames = []; // Store captured frames as data URLs
+let initialFrameWidth = 0; // Initial video frame width
+let initialFrameHeight = 0; // Initial video frame height
 
 async function startCamera(facingMode) {
     const video = document.getElementById('cameraFeed');
@@ -18,6 +20,12 @@ async function startCamera(facingMode) {
         });
         video.srcObject = stream;
         currentStream = stream; // Save the current stream
+
+        // Wait for the video to load its metadata to capture its dimensions
+        video.onloadedmetadata = () => {
+            initialFrameWidth = video.videoWidth;
+            initialFrameHeight = video.videoHeight;
+        };
     } catch (error) {
         console.error("Error accessing camera: ", error);
         alert("Unable to access the camera. Please check permissions and try again.");
@@ -29,20 +37,16 @@ function captureFrame() {
     const canvas = document.getElementById('captureCanvas');
     const context = canvas.getContext('2d');
 
-    // Set canvas dimensions to match live video dimensions
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
+    // Set canvas dimensions to match the initial video dimensions
+    canvas.width = initialFrameWidth;
+    canvas.height = initialFrameHeight;
 
     // Draw the current video frame onto the canvas
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    // Save the frame data URL and dimensions
+    // Save the frame as a data URL
     const frameDataURL = canvas.toDataURL('image/png');
-    capturedFrames.push({
-        dataURL: frameDataURL,
-        width: canvas.width,
-        height: canvas.height,
-    });
+    capturedFrames.push(frameDataURL);
 }
 
 function stopRecording() {
@@ -65,15 +69,9 @@ function playbackFrames() {
     const canvas = document.getElementById('captureCanvas');
     const context = canvas.getContext('2d');
 
-    if (capturedFrames.length === 0) {
-        alert("No frames to playback!");
-        return;
-    }
-
-    // Use the dimensions of the first frame for consistent playback
-    const firstFrame = capturedFrames[0];
-    canvas.width = firstFrame.width;
-    canvas.height = firstFrame.height;
+    // Use the initial video frame dimensions for playback
+    canvas.width = initialFrameWidth;
+    canvas.height = initialFrameHeight;
 
     let playbackIndex = 0;
 
@@ -86,12 +84,12 @@ function playbackFrames() {
         }
 
         // Display the current frame on the canvas
-        const frame = capturedFrames[playbackIndex];
+        const frameDataURL = capturedFrames[playbackIndex];
         const img = new Image();
         img.onload = () => {
             context.drawImage(img, 0, 0, canvas.width, canvas.height);
         };
-        img.src = frame.dataURL;
+        img.src = frameDataURL;
 
         playbackIndex++;
     }, 100); // Display each frame for 100ms (~10 FPS)
@@ -102,27 +100,4 @@ function playbackFrames() {
 }
 
 document.getElementById('switchCamera').addEventListener('click', () => {
-    currentFacingMode = currentFacingMode === "environment" ? "user" : "environment";
-    startCamera(currentFacingMode);
-});
-
-document.getElementById('recordButton').addEventListener('click', () => {
-    if (!isRecording) {
-        capturedFrames.length = 0; // Clear any previously captured frames
-        isRecording = true;
-        document.getElementById('recordButton').disabled = true;
-        document.getElementById('stopButton').disabled = false;
-        frameCaptureInterval = setInterval(captureFrame, 100); // Capture a frame every 100ms (~10 FPS)
-    }
-});
-
-document.getElementById('stopButton').addEventListener('click', () => {
-    stopRecording();
-});
-
-document.getElementById('playbackButton').addEventListener('click', () => {
-    playbackFrames();
-});
-
-// Start with the default camera (rear)
-startCamera(currentFacingMode);
+    currentFacingMode 
