@@ -10,16 +10,17 @@ body {
 }
 
 h1 {
-    margin: 10px 10px;
+    margin: 10px 0;
     color: #333;
+    font-size: 18px;
 }
 
 .video-container {
     position: relative;
-    width: 85%; /* Reduced by 5% */
-    max-width: 570px; /* Maintain consistent scaling */
+    width: 85%; /* Reduced size */
+    max-width: 570px;
     margin: 0 auto; /* Center the video container */
-    flex-grow: 1; /* Take up available space */
+    flex-grow: 0; /* Remove additional space allocation */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -41,16 +42,18 @@ canvas {
 }
 
 .controls {
-    margin: 5px 0; /* Minimized gap */
+    margin-top: 5px; /* Tighten gap between video and buttons */
+    margin-bottom: 0; /* Remove unnecessary bottom margin */
     text-align: center;
-    width: 100%;
+    width: 85%; /* Match video container width */
+    max-width: 570px; /* Consistent scaling */
     z-index: 10; /* Ensure buttons are above video and canvas */
 }
 
 button {
     margin: 5px;
-    padding: 10px 20px;
-    font-size: 16px;
+    padding: 8px 16px; /* Slightly smaller buttons */
+    font-size: 14px; /* Adjust font size */
     border: none;
     border-radius: 5px;
     background-color: #007bff;
