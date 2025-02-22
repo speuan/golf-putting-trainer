@@ -59,16 +59,24 @@ function captureFrame() {
     const canvas = document.getElementById("captureCanvas");
     const context = canvas.getContext("2d");
 
+    if (video.videoWidth === 0 || video.videoHeight === 0) {
+        logMessage("⚠️ Skipping frame capture - video not ready");
+        return;
+    }
+
+    // Ensure canvas matches video size
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
 
-    // Capture frame
+    // Capture the current frame
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
-
     let frameDataURL = canvas.toDataURL("image/png");
 
     if (frameDataURL.startsWith("data:image/png")) {
         capturedFrames.push(frameDataURL);
+        logMessage(`✅ Frame captured. Total frames: ${capturedFrames.length}`);
+    } else {
+        logMessage("⚠️ Frame capture failed - Invalid Data URL!");
     }
 
     let frame = cv.imread(canvas);
@@ -81,57 +89,6 @@ function captureFrame() {
     frame.delete();
 }
 
-function detectMotion(previous, current, ctx) {
-    let grayPrev = new cv.Mat();
-    let grayCurr = new cv.Mat();
-
-    cv.cvtColor(previous, grayPrev, cv.COLOR_RGBA2GRAY);
-    cv.cvtColor(current, grayCurr, cv.COLOR_RGBA2GRAY);
-
-    let diff = new cv.Mat();
-    cv.absdiff(grayPrev, grayCurr, diff);
-
-    let blurred = new cv.Mat();
-    cv.GaussianBlur(diff, blurred, new cv.Size(5, 5), 0);
-
-    let motionDetected = false;
-    let motionThresholds = [5, 10, 15, 20]; // Range of thresholds for detecting motion
-
-    motionThresholds.forEach(threshold => {
-        let thresholded = new cv.Mat();
-        cv.threshold(blurred, thresholded, threshold, 255, cv.THRESH_BINARY);
-
-        let contours = new cv.MatVector();
-        let hierarchy = new cv.Mat();
-        cv.findContours(thresholded, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
-
-        if (contours.size() > 0) {
-            motionDetected = true;
-            logMessage(`📸 Motion detected at threshold ${threshold} in ${contours.size()} areas`);
-
-            ctx.strokeStyle = "yellow";
-            ctx.lineWidth = 3;
-            for (let i = 0; i < contours.size(); i++) {
-                let rect = cv.boundingRect(contours.get(i));
-                ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
-            }
-        }
-
-        thresholded.delete();
-        contours.delete();
-        hierarchy.delete();
-    });
-
-    if (!motionDetected) {
-        logMessage("❌ No motion detected at any threshold");
-    }
-
-    grayPrev.delete();
-    grayCurr.delete();
-    diff.delete();
-    blurred.delete();
-}
-
 function stopRecording() {
     if (isRecording) {
         isRecording = false;
@@ -141,7 +98,7 @@ function stopRecording() {
 
         if (capturedFrames.length > 0) {
             document.getElementById("playbackButton").disabled = false;
-            logMessage(`✅ Recording stopped.`);
+            logMessage(`✅ Recording stopped. Captured ${capturedFrames.length} frames.`);
         } else {
             logMessage("❌ No frames recorded, playback button remains disabled.");
         }
@@ -179,14 +136,6 @@ function playbackFrames() {
         img.onload = () => {
             context.clearRect(0, 0, canvas.width, canvas.height);
             context.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-            let frame = cv.imread(canvas);
-            if (previousFrame !== null) {
-                detectMotion(previousFrame, frame, context);
-            }
-
-            previousFrame = frame.clone();
-            frame.delete();
         };
         img.src = frameDataURL;
 
@@ -204,7 +153,7 @@ document.getElementById("switchCamera").addEventListener("click", () => {
 
 document.getElementById("recordButton").addEventListener("click", () => {
     if (!isRecording) {
-        capturedFrames.length = 0;
+        capturedFrames.length = 0; // ✅ Reset only when starting a new recording
         document.getElementById("playbackButton").disabled = true;
         isRecording = true;
         document.getElementById("recordButton").disabled = true;
