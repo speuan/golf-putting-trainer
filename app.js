@@ -72,92 +72,20 @@ function captureFrame() {
     frame.delete();
 }
 
-function detectMotion(previous, current, ctx) {
-    let grayPrev = new cv.Mat();
-    let grayCurr = new cv.Mat();
-
-    cv.cvtColor(previous, grayPrev, cv.COLOR_RGBA2GRAY);
-    cv.cvtColor(current, grayCurr, cv.COLOR_RGBA2GRAY);
-
-    let diff = new cv.Mat();
-    cv.absdiff(grayPrev, grayCurr, diff);
-
-    let blurred = new cv.Mat();
-    cv.GaussianBlur(diff, blurred, new cv.Size(5, 5), 0);
-
-    let thresholded = new cv.Mat();
-    cv.threshold(blurred, thresholded, 10, 255, cv.THRESH_BINARY);
-
-    let contours = new cv.MatVector();
-    let hierarchy = new cv.Mat();
-    cv.findContours(thresholded, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
-
-    logMessage(`Motion areas detected: ${contours.size()}`);
-
-    ctx.strokeStyle = "yellow";
-    ctx.lineWidth = 2;
-    for (let i = 0; i < contours.size(); i++) {
-        let rect = cv.boundingRect(contours.get(i));
-        ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
-    }
-
-    grayPrev.delete();
-    grayCurr.delete();
-    diff.delete();
-    blurred.delete();
-    hierarchy.delete();
-
-    return { mask: thresholded, contours: contours };
-}
-
-function detectBall(motionData, ctx) {
-    let motionMask = motionData.mask;
-    let contours = motionData.contours;
-
-    let circles = new cv.Mat();
-    cv.HoughCircles(
-        motionMask, circles, cv.HOUGH_GRADIENT, 1, 30, 80, 20, 5, 30
-    );
-
-    let largestCircleRadius = 0;
-
-    if (circles.rows > 0) {
-        for (let i = 0; i < circles.cols; ++i) {
-            let x = circles.data32F[i * 3];
-            let y = circles.data32F[i * 3 + 1];
-            let radius = circles.data32F[i * 3 + 2];
-
-            for (let j = 0; j < contours.size(); j++) {
-                let rect = cv.boundingRect(contours.get(j));
-                if (x > rect.x && x < rect.x + rect.width && y > rect.y && y < rect.y + rect.height) {
-                    ctx.beginPath();
-                    ctx.arc(x, y, radius, 0, 2 * Math.PI);
-                    ctx.lineWidth = 3;
-                    ctx.strokeStyle = "red";
-                    ctx.stroke();
-
-                    if (radius > largestCircleRadius) {
-                        largestCircleRadius = radius;
-                    }
-                }
-            }
-        }
-    }
-
-    logMessage(`Largest detected circle radius: ${largestCircleRadius}px`);
-
-    motionMask.delete();
-    circles.delete();
-    contours.delete();
-}
-
 function stopRecording() {
     if (isRecording) {
         isRecording = false;
         clearInterval(frameCaptureInterval);
         document.getElementById('recordButton').disabled = false;
         document.getElementById('stopButton').disabled = true;
-        document.getElementById('playbackButton').disabled = capturedFrames.length === 0;
+
+        if (capturedFrames.length > 0) {
+            document.getElementById('playbackButton').disabled = false; // ✅ Enable playback button
+        } else {
+            logMessage("No frames recorded, playback button remains disabled.");
+        }
+
+        logMessage(`Recording stopped. Captured frames: ${capturedFrames.length}`);
     }
 }
 
@@ -216,7 +144,8 @@ document.getElementById('switchCamera').addEventListener('click', () => {
 
 document.getElementById('recordButton').addEventListener('click', () => {
     if (!isRecording) {
-        capturedFrames.length = 0;
+        capturedFrames.length = 0; // ✅ Reset frames before recording
+        document.getElementById('playbackButton').disabled = true; // ✅ Disable playback during recording
         isRecording = true;
         document.getElementById('recordButton').disabled = true;
         document.getElementById('stopButton').disabled = false;
