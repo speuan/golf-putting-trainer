@@ -51,25 +51,22 @@ function logMessage(message) {
 }
 
 function captureFrame() {
+    logMessage("Capturing frame...");
+
     const video = document.getElementById('cameraFeed');
     const canvas = document.getElementById('captureCanvas');
     const context = canvas.getContext('2d');
 
-    // Draw current frame onto the canvas
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    let frame = cv.imread(canvas);
-
-    if (previousFrame !== null) {
-        let motionData = detectMotion(previousFrame, frame, context);
-        detectBall(motionData, context);
+    let frameDataURL = canvas.toDataURL('image/png');
+    
+    if (frameDataURL) {
+        capturedFrames.push(frameDataURL);
+        logMessage(`Frame captured. Total frames: ${capturedFrames.length}`);
+    } else {
+        logMessage("⚠️ Warning: Frame capture failed!");
     }
-
-    previousFrame = frame.clone();
-    const frameDataURL = canvas.toDataURL('image/png');
-    capturedFrames.push(frameDataURL);
-
-    frame.delete();
 }
 
 function stopRecording() {
@@ -80,12 +77,11 @@ function stopRecording() {
         document.getElementById('stopButton').disabled = true;
 
         if (capturedFrames.length > 0) {
-            document.getElementById('playbackButton').disabled = false; // ✅ Enable playback button
+            document.getElementById('playbackButton').disabled = false;
+            logMessage(`✅ Recording stopped. Captured ${capturedFrames.length} frames.`);
         } else {
-            logMessage("No frames recorded, playback button remains disabled.");
+            logMessage("❌ No frames recorded, playback button remains disabled.");
         }
-
-        logMessage(`Recording stopped. Captured frames: ${capturedFrames.length}`);
     }
 }
 
@@ -105,11 +101,14 @@ function playbackFrames() {
 
     let playbackIndex = 0;
 
+    logMessage("▶️ Starting playback...");
+
     const playbackInterval = setInterval(() => {
         if (playbackIndex >= capturedFrames.length) {
             clearInterval(playbackInterval);
             canvas.style.display = "none";
             video.style.display = "block";
+            logMessage("⏹ Playback finished.");
             return;
         }
 
@@ -118,15 +117,6 @@ function playbackFrames() {
         img.onload = () => {
             context.clearRect(0, 0, canvas.width, canvas.height);
             context.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-            let frame = cv.imread(canvas);
-            if (previousFrame !== null) {
-                let motionData = detectMotion(previousFrame, frame, context);
-                detectBall(motionData, context);
-            }
-
-            previousFrame = frame.clone();
-            frame.delete();
         };
         img.src = frameDataURL;
 
@@ -144,11 +134,13 @@ document.getElementById('switchCamera').addEventListener('click', () => {
 
 document.getElementById('recordButton').addEventListener('click', () => {
     if (!isRecording) {
-        capturedFrames.length = 0; // ✅ Reset frames before recording
-        document.getElementById('playbackButton').disabled = true; // ✅ Disable playback during recording
+        capturedFrames.length = 0;
+        document.getElementById('playbackButton').disabled = true; 
         isRecording = true;
         document.getElementById('recordButton').disabled = true;
         document.getElementById('stopButton').disabled = false;
+        
+        logMessage("🔴 Recording started...");
         frameCaptureInterval = setInterval(captureFrame, 100);
     }
 });
