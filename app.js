@@ -4,6 +4,8 @@ let isRecording = false;
 let frameCaptureInterval = null;
 const capturedFrames = []; // Store captured frames as image data URLs
 
+let previousFrame = null; // Store the previous frame for motion detection
+
 function cvReady() {
     logMessage("✅ OpenCV.js is ready!");
 }
@@ -57,21 +59,56 @@ function captureFrame() {
     const canvas = document.getElementById("captureCanvas");
     const context = canvas.getContext("2d");
 
-    // Ensure canvas matches video dimensions
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
 
-    // Capture frame
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    let frame = cv.imread(canvas);
 
-    let frameDataURL = canvas.toDataURL("image/png");
-
-    if (frameDataURL.startsWith("data:image/png")) {
-        capturedFrames.push(frameDataURL);
-        logMessage(`✅ Frame captured. Total frames: ${capturedFrames.length}`);
-    } else {
-        logMessage("⚠️ Frame capture failed - Invalid Data URL!");
+    if (previousFrame !== null) {
+        detectMotion(previousFrame, frame, context);
     }
+
+    previousFrame = frame.clone();
+    const frameDataURL = canvas.toDataURL("image/png");
+    capturedFrames.push(frameDataURL);
+    frame.delete();
+}
+
+function detectMotion(previous, current, ctx) {
+    let grayPrev = new cv.Mat();
+    let grayCurr = new cv.Mat();
+
+    cv.cvtColor(previous, grayPrev, cv.COLOR_RGBA2GRAY);
+    cv.cvtColor(current, grayCurr, cv.COLOR_RGBA2GRAY);
+
+    let diff = new cv.Mat();
+    cv.absdiff(grayPrev, grayCurr, diff);
+
+    let blurred = new cv.Mat();
+    cv.GaussianBlur(diff, blurred, new cv.Size(5, 5), 0);
+
+    let thresholded = new cv.Mat();
+    cv.threshold(blurred, thresholded, 15, 255, cv.THRESH_BINARY); // Lower threshold increases sensitivity
+
+    let contours = new cv.MatVector();
+    let hierarchy = new cv.Mat();
+    cv.findContours(thresholded, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+
+    logMessage(`📸 Motion detected in ${contours.size()} areas`);
+
+    ctx.strokeStyle = "yellow";
+    ctx.lineWidth = 2;
+    for (let i = 0; i < contours.size(); i++) {
+        let rect = cv.boundingRect(contours.get(i));
+        ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
+    }
+
+    grayPrev.delete();
+    grayCurr.delete();
+    diff.delete();
+    blurred.delete();
+    hierarchy.delete();
 }
 
 function stopRecording() {
@@ -121,6 +158,14 @@ function playbackFrames() {
         img.onload = () => {
             context.clearRect(0, 0, canvas.width, canvas.height);
             context.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+            let frame = cv.imread(canvas);
+            if (previousFrame !== null) {
+                detectMotion(previousFrame, frame, context);
+            }
+
+            previousFrame = frame.clone();
+            frame.delete();
         };
         img.src = frameDataURL;
 
@@ -138,8 +183,8 @@ document.getElementById("switchCamera").addEventListener("click", () => {
 
 document.getElementById("recordButton").addEventListener("click", () => {
     if (!isRecording) {
-        capturedFrames.length = 0; // ✅ Reset frames before recording
-        document.getElementById("playbackButton").disabled = true; // ✅ Disable playback during recording
+        capturedFrames.length = 0;
+        document.getElementById("playbackButton").disabled = true; 
         isRecording = true;
         document.getElementById("recordButton").disabled = true;
         document.getElementById("stopButton").disabled = false;
