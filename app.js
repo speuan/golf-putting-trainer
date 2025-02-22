@@ -42,7 +42,7 @@ function captureFrame() {
 
     if (previousFrame !== null) {
         let motionMask = detectMotion(previousFrame, frame);
-        detectBall(motionMask); // Only analyze motion areas for ball detection
+        detectBall(motionMask, context); // Only analyze motion areas for ball detection
     }
 
     // Save the frame
@@ -71,40 +71,76 @@ function detectMotion(previous, current) {
     let thresholded = new cv.Mat();
     cv.threshold(blurred, thresholded, 25, 255, cv.THRESH_BINARY); // Highlight motion
 
+    // Find contours (bounding boxes for moving areas)
+    let contours = new cv.MatVector();
+    let hierarchy = new cv.Mat();
+    cv.findContours(thresholded, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+
+    console.log(`Motion areas detected: ${contours.size()}`);
+
     // Cleanup
     grayPrev.delete();
     grayCurr.delete();
     diff.delete();
     blurred.delete();
+    hierarchy.delete();
 
-    return thresholded; // Return motion mask
+    return { mask: thresholded, contours: contours };
 }
 
-function detectBall(motionMask) {
+function detectBall(motionData, ctx) {
+    let motionMask = motionData.mask;
+    let contours = motionData.contours;
+
     let circles = new cv.Mat();
     cv.HoughCircles(
         motionMask, circles, cv.HOUGH_GRADIENT, 1, 30, 80, 20, 5, 30
     );
 
-    let canvas = document.getElementById('captureCanvas');
-    let ctx = canvas.getContext("2d");
+    let largestCircleRadius = 0;
+
+    // Draw bounding boxes around motion
+    for (let i = 0; i < contours.size(); i++) {
+        let rect = cv.boundingRect(contours.get(i));
+        ctx.beginPath();
+        ctx.rect(rect.x, rect.y, rect.width, rect.height);
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = "yellow"; // Bounding box color
+        ctx.stroke();
+    }
 
     if (circles.rows > 0) {
         for (let i = 0; i < circles.cols; ++i) {
             let x = circles.data32F[i * 3];
             let y = circles.data32F[i * 3 + 1];
             let radius = circles.data32F[i * 3 + 2];
-            ctx.beginPath();
-            ctx.arc(x, y, radius, 0, 2 * Math.PI);
-            ctx.lineWidth = 3;
-            ctx.strokeStyle = "red";
-            ctx.stroke();
+
+            // Check if circle is inside any motion bounding box
+            for (let j = 0; j < contours.size(); j++) {
+                let rect = cv.boundingRect(contours.get(j));
+                if (x > rect.x && x < rect.x + rect.width && y > rect.y && y < rect.y + rect.height) {
+                    // Draw detected ball
+                    ctx.beginPath();
+                    ctx.arc(x, y, radius, 0, 2 * Math.PI);
+                    ctx.lineWidth = 3;
+                    ctx.strokeStyle = "red";
+                    ctx.stroke();
+
+                    // Keep track of the largest detected circle
+                    if (radius > largestCircleRadius) {
+                        largestCircleRadius = radius;
+                    }
+                }
+            }
         }
     }
+
+    console.log(`Largest detected circle radius: ${largestCircleRadius}px`);
 
     // Cleanup
     motionMask.delete();
     circles.delete();
+    contours.delete();
 }
 
 function stopRecording() {
@@ -147,7 +183,11 @@ function playbackFrames() {
             context.clearRect(0, 0, canvas.width, canvas.height);
             context.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-            detectBall(canvas); // Process frame for ball detection
+            let frame = cv.imread(canvas);
+            let motionData = detectMotion(previousFrame, frame);
+            detectBall(motionData, context);
+            previousFrame = frame.clone();
+            frame.delete();
         };
         img.src = frameDataURL;
 
