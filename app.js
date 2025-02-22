@@ -88,27 +88,42 @@ function detectMotion(previous, current, ctx) {
     let blurred = new cv.Mat();
     cv.GaussianBlur(diff, blurred, new cv.Size(5, 5), 0);
 
-    let thresholded = new cv.Mat();
-    cv.threshold(blurred, thresholded, 15, 255, cv.THRESH_BINARY); // Lower threshold increases sensitivity
+    let motionDetected = false;
+    let motionThresholds = [5, 10, 15, 20]; // Range of thresholds for detecting motion
 
-    let contours = new cv.MatVector();
-    let hierarchy = new cv.Mat();
-    cv.findContours(thresholded, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+    motionThresholds.forEach(threshold => {
+        let thresholded = new cv.Mat();
+        cv.threshold(blurred, thresholded, threshold, 255, cv.THRESH_BINARY);
 
-    logMessage(`📸 Motion detected in ${contours.size()} areas`);
+        let contours = new cv.MatVector();
+        let hierarchy = new cv.Mat();
+        cv.findContours(thresholded, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
 
-    ctx.strokeStyle = "yellow";
-    ctx.lineWidth = 2;
-    for (let i = 0; i < contours.size(); i++) {
-        let rect = cv.boundingRect(contours.get(i));
-        ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
+        if (contours.size() > 0) {
+            motionDetected = true;
+            logMessage(`📸 Motion detected at threshold ${threshold} in ${contours.size()} areas`);
+
+            ctx.strokeStyle = "yellow";
+            ctx.lineWidth = 3;
+            for (let i = 0; i < contours.size(); i++) {
+                let rect = cv.boundingRect(contours.get(i));
+                ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
+            }
+        }
+
+        thresholded.delete();
+        contours.delete();
+        hierarchy.delete();
+    });
+
+    if (!motionDetected) {
+        logMessage("❌ No motion detected at any threshold");
     }
 
     grayPrev.delete();
     grayCurr.delete();
     diff.delete();
     blurred.delete();
-    hierarchy.delete();
 }
 
 function stopRecording() {
@@ -120,7 +135,7 @@ function stopRecording() {
 
         if (capturedFrames.length > 0) {
             document.getElementById("playbackButton").disabled = false;
-            logMessage(`✅ Recording stopped. Captured ${capturedFrames.length} frames.`);
+            logMessage(`✅ Recording stopped.`);
         } else {
             logMessage("❌ No frames recorded, playback button remains disabled.");
         }
@@ -184,11 +199,11 @@ document.getElementById("switchCamera").addEventListener("click", () => {
 document.getElementById("recordButton").addEventListener("click", () => {
     if (!isRecording) {
         capturedFrames.length = 0;
-        document.getElementById("playbackButton").disabled = true; 
+        document.getElementById("playbackButton").disabled = true;
         isRecording = true;
         document.getElementById("recordButton").disabled = true;
         document.getElementById("stopButton").disabled = false;
-        
+
         logMessage("🔴 Recording started...");
         frameCaptureInterval = setInterval(captureFrame, 100);
     }
