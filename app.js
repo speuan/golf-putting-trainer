@@ -7,7 +7,7 @@ const capturedFrames = []; // Store captured frames as image data URLs
 let previousFrame = null; // Store the previous frame for motion detection
 
 function cvReady() {
-    console.log("OpenCV.js is ready!");
+    logMessage("OpenCV.js is ready!");
 }
 
 async function startCamera(facingMode) {
@@ -24,9 +24,30 @@ async function startCamera(facingMode) {
         video.srcObject = stream;
         currentStream = stream;
     } catch (error) {
-        console.error("Error accessing camera: ", error);
+        logMessage(`Error accessing camera: ${error}`);
         alert("Unable to access the camera. Please check permissions and try again.");
     }
+}
+
+function logMessage(message) {
+    let logContainer = document.getElementById("debug-log");
+    if (!logContainer) {
+        logContainer = document.createElement("div");
+        logContainer.id = "debug-log";
+        logContainer.style.position = "absolute";
+        logContainer.style.bottom = "10px";
+        logContainer.style.left = "10px";
+        logContainer.style.width = "90%";
+        logContainer.style.maxHeight = "200px";
+        logContainer.style.overflowY = "scroll";
+        logContainer.style.backgroundColor = "rgba(0,0,0,0.7)";
+        logContainer.style.color = "white";
+        logContainer.style.padding = "10px";
+        logContainer.style.fontSize = "14px";
+        logContainer.style.borderRadius = "5px";
+        document.body.appendChild(logContainer);
+    }
+    logContainer.innerHTML += `<p>${message}</p>`;
 }
 
 function captureFrame() {
@@ -37,7 +58,6 @@ function captureFrame() {
     // Draw current frame onto the canvas
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    // Convert to OpenCV image
     let frame = cv.imread(canvas);
 
     if (previousFrame !== null) {
@@ -45,12 +65,10 @@ function captureFrame() {
         detectBall(motionData, context);
     }
 
-    // Save the frame
     previousFrame = frame.clone();
     const frameDataURL = canvas.toDataURL('image/png');
     capturedFrames.push(frameDataURL);
 
-    // Cleanup
     frame.delete();
 }
 
@@ -58,27 +76,24 @@ function detectMotion(previous, current, ctx) {
     let grayPrev = new cv.Mat();
     let grayCurr = new cv.Mat();
 
-    // Convert both frames to grayscale
     cv.cvtColor(previous, grayPrev, cv.COLOR_RGBA2GRAY);
     cv.cvtColor(current, grayCurr, cv.COLOR_RGBA2GRAY);
 
     let diff = new cv.Mat();
-    cv.absdiff(grayPrev, grayCurr, diff); // Compute the difference between frames
+    cv.absdiff(grayPrev, grayCurr, diff);
 
     let blurred = new cv.Mat();
     cv.GaussianBlur(diff, blurred, new cv.Size(5, 5), 0);
 
     let thresholded = new cv.Mat();
-    cv.threshold(blurred, thresholded, 10, 255, cv.THRESH_BINARY); // Lowered threshold to detect more motion
+    cv.threshold(blurred, thresholded, 10, 255, cv.THRESH_BINARY);
 
-    // Find contours (bounding boxes for moving areas)
     let contours = new cv.MatVector();
     let hierarchy = new cv.Mat();
     cv.findContours(thresholded, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
 
-    console.log(`Motion areas detected: ${contours.size()}`);
+    logMessage(`Motion areas detected: ${contours.size()}`);
 
-    // Draw bounding boxes around motion
     ctx.strokeStyle = "yellow";
     ctx.lineWidth = 2;
     for (let i = 0; i < contours.size(); i++) {
@@ -86,7 +101,6 @@ function detectMotion(previous, current, ctx) {
         ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
     }
 
-    // Cleanup
     grayPrev.delete();
     grayCurr.delete();
     diff.delete();
@@ -113,11 +127,9 @@ function detectBall(motionData, ctx) {
             let y = circles.data32F[i * 3 + 1];
             let radius = circles.data32F[i * 3 + 2];
 
-            // Check if circle is inside any motion bounding box
             for (let j = 0; j < contours.size(); j++) {
                 let rect = cv.boundingRect(contours.get(j));
                 if (x > rect.x && x < rect.x + rect.width && y > rect.y && y < rect.y + rect.height) {
-                    // Draw detected ball
                     ctx.beginPath();
                     ctx.arc(x, y, radius, 0, 2 * Math.PI);
                     ctx.lineWidth = 3;
@@ -132,7 +144,7 @@ function detectBall(motionData, ctx) {
         }
     }
 
-    console.log(`Largest detected circle radius: ${largestCircleRadius}px`);
+    logMessage(`Largest detected circle radius: ${largestCircleRadius}px`);
 
     motionMask.delete();
     circles.delete();
@@ -180,13 +192,11 @@ function playbackFrames() {
             context.drawImage(img, 0, 0, canvas.width, canvas.height);
 
             let frame = cv.imread(canvas);
-
-            // Ensure previous frame is set before detecting motion
             if (previousFrame !== null) {
                 let motionData = detectMotion(previousFrame, frame, context);
                 detectBall(motionData, context);
             }
-            
+
             previousFrame = frame.clone();
             frame.delete();
         };
@@ -194,7 +204,7 @@ function playbackFrames() {
 
         playbackIndex++;
     }, 100);
-    
+
     canvas.style.display = "block";
     video.style.display = "none";
 }
