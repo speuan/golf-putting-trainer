@@ -62,7 +62,15 @@ function captureFrame() {
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
 
+    // Capture frame
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    let frameDataURL = canvas.toDataURL("image/png");
+
+    if (frameDataURL.startsWith("data:image/png")) {
+        capturedFrames.push(frameDataURL);
+    }
+
     let frame = cv.imread(canvas);
 
     if (previousFrame !== null) {
@@ -70,8 +78,6 @@ function captureFrame() {
     }
 
     previousFrame = frame.clone();
-    const frameDataURL = canvas.toDataURL("image/png");
-    capturedFrames.push(frameDataURL);
     frame.delete();
 }
 
