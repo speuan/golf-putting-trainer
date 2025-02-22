@@ -2,7 +2,11 @@ let currentStream = null;
 let currentFacingMode = "environment"; // Default to rear camera
 let isRecording = false;
 let frameCaptureInterval = null;
-const capturedFrames = []; // Store captured frames as data URLs
+const capturedFrames = []; // Store captured frames as image data URLs
+
+function cvReady() {
+    console.log("OpenCV.js is ready!");
+}
 
 async function startCamera(facingMode) {
     const video = document.getElementById('cameraFeed');
@@ -18,15 +22,6 @@ async function startCamera(facingMode) {
         });
         video.srcObject = stream;
         currentStream = stream; // Save the current stream
-
-        video.onloadedmetadata = () => {
-            // Ensure canvas matches video size dynamically
-            const canvas = document.getElementById('captureCanvas');
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-
-            console.log(`Video size: ${video.videoWidth}x${video.videoHeight}`);
-        };
     } catch (error) {
         console.error("Error accessing camera: ", error);
         alert("Unable to access the camera. Please check permissions and try again.");
@@ -52,12 +47,47 @@ function stopRecording() {
         clearInterval(frameCaptureInterval);
         document.getElementById('recordButton').disabled = false;
         document.getElementById('stopButton').disabled = true;
-        document.getElementById('playbackButton').disabled = capturedFrames.length === 0; // Enable playback only if frames exist
+        document.getElementById('playbackButton').disabled = capturedFrames.length === 0;
     }
 }
 
+function detectBall(frame) {
+    let src = cv.imread(frame); // Load the image
+    let gray = new cv.Mat();
+    cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0); // Convert to grayscale
+
+    let blurred = new cv.Mat();
+    cv.GaussianBlur(gray, blurred, new cv.Size(5, 5), 0); // Apply Gaussian blur
+
+    let circles = new cv.Mat();
+    cv.HoughCircles(
+        blurred, circles, cv.HOUGH_GRADIENT, 1, 30, 80, 20, 5, 30
+    ); // Detect circles (adjust parameters if needed)
+
+    let canvas = document.getElementById('captureCanvas');
+    let ctx = canvas.getContext("2d");
+
+    if (circles.rows > 0) {
+        for (let i = 0; i < circles.cols; ++i) {
+            let x = circles.data32F[i * 3];
+            let y = circles.data32F[i * 3 + 1];
+            let radius = circles.data32F[i * 3 + 2];
+            ctx.beginPath();
+            ctx.arc(x, y, radius, 0, 2 * Math.PI);
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = "red";
+            ctx.stroke();
+        }
+    }
+
+    // Clean up
+    src.delete();
+    gray.delete();
+    blurred.delete();
+    circles.delete();
+}
+
 function playbackFrames() {
-    // Stop recording before playback
     if (isRecording) {
         stopRecording();
     }
@@ -71,30 +101,31 @@ function playbackFrames() {
         return;
     }
 
-    // Show the canvas and hide the video during playback
-    canvas.style.display = "block";
-    video.style.display = "none";
-
     let playbackIndex = 0;
 
     const playbackInterval = setInterval(() => {
         if (playbackIndex >= capturedFrames.length) {
             clearInterval(playbackInterval);
-            canvas.style.display = "none"; // Hide canvas after playback
-            video.style.display = "block"; // Restore video feed display
+            canvas.style.display = "none";
+            video.style.display = "block";
             return;
         }
 
-        // Display the current frame on the canvas
         const frameDataURL = capturedFrames[playbackIndex];
-        const img = new Image();
+        let img = new Image();
         img.onload = () => {
+            context.clearRect(0, 0, canvas.width, canvas.height);
             context.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+            detectBall(canvas); // Process the frame for ball detection
         };
         img.src = frameDataURL;
 
         playbackIndex++;
-    }, 100); // Display each frame for 100ms (~10 FPS)
+    }, 100);
+    
+    canvas.style.display = "block";
+    video.style.display = "none";
 }
 
 document.getElementById('switchCamera').addEventListener('click', () => {
@@ -104,11 +135,11 @@ document.getElementById('switchCamera').addEventListener('click', () => {
 
 document.getElementById('recordButton').addEventListener('click', () => {
     if (!isRecording) {
-        capturedFrames.length = 0; // Clear any previously captured frames
+        capturedFrames.length = 0;
         isRecording = true;
         document.getElementById('recordButton').disabled = true;
         document.getElementById('stopButton').disabled = false;
-        frameCaptureInterval = setInterval(captureFrame, 100); // Capture a frame every 100ms (~10 FPS)
+        frameCaptureInterval = setInterval(captureFrame, 100);
     }
 });
 
