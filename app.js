@@ -78,15 +78,6 @@ function detectMotion(previous, current, ctx) {
 
     console.log(`Motion areas detected: ${contours.size()}`);
 
-    // Draw motion mask for debugging (visualize detected motion)
-    let motionDebugCanvas = document.createElement("canvas");
-    motionDebugCanvas.width = canvas.width;
-    motionDebugCanvas.height = canvas.height;
-    let motionDebugCtx = motionDebugCanvas.getContext("2d");
-    let motionData = new Uint8ClampedArray(thresholded.data);
-    let motionImageData = new ImageData(motionData, thresholded.cols, thresholded.rows);
-    motionDebugCtx.putImageData(motionImageData, 0, 0);
-
     // Draw bounding boxes around motion
     ctx.strokeStyle = "yellow";
     ctx.lineWidth = 2;
@@ -189,8 +180,13 @@ function playbackFrames() {
             context.drawImage(img, 0, 0, canvas.width, canvas.height);
 
             let frame = cv.imread(canvas);
-            let motionData = detectMotion(previousFrame, frame, context);
-            detectBall(motionData, context);
+
+            // Ensure previous frame is set before detecting motion
+            if (previousFrame !== null) {
+                let motionData = detectMotion(previousFrame, frame, context);
+                detectBall(motionData, context);
+            }
+            
             previousFrame = frame.clone();
             frame.delete();
         };
@@ -226,4 +222,5 @@ document.getElementById('playbackButton').addEventListener('click', () => {
     playbackFrames();
 });
 
+// Start with the default camera (rear)
 startCamera(currentFacingMode);
