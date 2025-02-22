@@ -4,14 +4,12 @@ let isRecording = false;
 let frameCaptureInterval = null;
 const capturedFrames = []; // Store captured frames as image data URLs
 
-let previousFrame = null; // Store the previous frame for motion detection
-
 function cvReady() {
-    logMessage("OpenCV.js is ready!");
+    logMessage("✅ OpenCV.js is ready!");
 }
 
 async function startCamera(facingMode) {
-    const video = document.getElementById('cameraFeed');
+    const video = document.getElementById("cameraFeed");
 
     if (currentStream) {
         currentStream.getTracks().forEach(track => track.stop());
@@ -19,12 +17,16 @@ async function startCamera(facingMode) {
 
     try {
         const stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: facingMode }
+            video: { facingMode: facingMode },
         });
         video.srcObject = stream;
         currentStream = stream;
+
+        video.onloadedmetadata = () => {
+            logMessage(`📷 Video stream ready: ${video.videoWidth}x${video.videoHeight}`);
+        };
     } catch (error) {
-        logMessage(`Error accessing camera: ${error}`);
+        logMessage(`❌ Error accessing camera: ${error}`);
         alert("Unable to access the camera. Please check permissions and try again.");
     }
 }
@@ -51,21 +53,24 @@ function logMessage(message) {
 }
 
 function captureFrame() {
-    logMessage("Capturing frame...");
+    const video = document.getElementById("cameraFeed");
+    const canvas = document.getElementById("captureCanvas");
+    const context = canvas.getContext("2d");
 
-    const video = document.getElementById('cameraFeed');
-    const canvas = document.getElementById('captureCanvas');
-    const context = canvas.getContext('2d');
+    // Ensure canvas matches video dimensions
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
 
+    // Capture frame
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    let frameDataURL = canvas.toDataURL('image/png');
-    
-    if (frameDataURL) {
+    let frameDataURL = canvas.toDataURL("image/png");
+
+    if (frameDataURL.startsWith("data:image/png")) {
         capturedFrames.push(frameDataURL);
-        logMessage(`Frame captured. Total frames: ${capturedFrames.length}`);
+        logMessage(`✅ Frame captured. Total frames: ${capturedFrames.length}`);
     } else {
-        logMessage("⚠️ Warning: Frame capture failed!");
+        logMessage("⚠️ Frame capture failed - Invalid Data URL!");
     }
 }
 
@@ -73,11 +78,11 @@ function stopRecording() {
     if (isRecording) {
         isRecording = false;
         clearInterval(frameCaptureInterval);
-        document.getElementById('recordButton').disabled = false;
-        document.getElementById('stopButton').disabled = true;
+        document.getElementById("recordButton").disabled = false;
+        document.getElementById("stopButton").disabled = true;
 
         if (capturedFrames.length > 0) {
-            document.getElementById('playbackButton').disabled = false;
+            document.getElementById("playbackButton").disabled = false;
             logMessage(`✅ Recording stopped. Captured ${capturedFrames.length} frames.`);
         } else {
             logMessage("❌ No frames recorded, playback button remains disabled.");
@@ -90,9 +95,9 @@ function playbackFrames() {
         stopRecording();
     }
 
-    const video = document.getElementById('cameraFeed');
-    const canvas = document.getElementById('captureCanvas');
-    const context = canvas.getContext('2d');
+    const video = document.getElementById("cameraFeed");
+    const canvas = document.getElementById("captureCanvas");
+    const context = canvas.getContext("2d");
 
     if (capturedFrames.length === 0) {
         alert("No frames to playback!");
@@ -100,7 +105,6 @@ function playbackFrames() {
     }
 
     let playbackIndex = 0;
-
     logMessage("▶️ Starting playback...");
 
     const playbackInterval = setInterval(() => {
@@ -127,29 +131,29 @@ function playbackFrames() {
     video.style.display = "none";
 }
 
-document.getElementById('switchCamera').addEventListener('click', () => {
+document.getElementById("switchCamera").addEventListener("click", () => {
     currentFacingMode = currentFacingMode === "environment" ? "user" : "environment";
     startCamera(currentFacingMode);
 });
 
-document.getElementById('recordButton').addEventListener('click', () => {
+document.getElementById("recordButton").addEventListener("click", () => {
     if (!isRecording) {
-        capturedFrames.length = 0;
-        document.getElementById('playbackButton').disabled = true; 
+        capturedFrames.length = 0; // ✅ Reset frames before recording
+        document.getElementById("playbackButton").disabled = true; // ✅ Disable playback during recording
         isRecording = true;
-        document.getElementById('recordButton').disabled = true;
-        document.getElementById('stopButton').disabled = false;
+        document.getElementById("recordButton").disabled = true;
+        document.getElementById("stopButton").disabled = false;
         
         logMessage("🔴 Recording started...");
         frameCaptureInterval = setInterval(captureFrame, 100);
     }
 });
 
-document.getElementById('stopButton').addEventListener('click', () => {
+document.getElementById("stopButton").addEventListener("click", () => {
     stopRecording();
 });
 
-document.getElementById('playbackButton').addEventListener('click', () => {
+document.getElementById("playbackButton").addEventListener("click", () => {
     playbackFrames();
 });
 
