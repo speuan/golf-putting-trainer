@@ -5,6 +5,7 @@ let frameCaptureInterval = null;
 const capturedFrames = []; // Store captured frames as image data URLs
 
 let previousFrame = null; // Store the previous frame for motion detection
+let debugMode = true; // Toggle debug mode to visualize motion detection
 
 function cvReady() {
     logMessage("✅ OpenCV.js is ready!");
@@ -66,7 +67,6 @@ function captureFrame() {
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
 
-    // Capture frame
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
     let frameDataURL = canvas.toDataURL("image/png");
 
@@ -97,44 +97,49 @@ function detectMotion(previous, current, ctx) {
     let blurred = new cv.Mat();
     cv.GaussianBlur(diff, blurred, new cv.Size(5, 5), 0);
 
-    let motionThresholds = [5, 10, 15, 20, 30]; // Range of thresholds
-    let motionDetected = false;
-    let totalContours = 0;
+    let threshold = 20;
+    let thresholded = new cv.Mat();
+    cv.threshold(blurred, thresholded, threshold, 255, cv.THRESH_BINARY);
 
-    motionThresholds.forEach(threshold => {
-        let thresholded = new cv.Mat();
-        cv.threshold(blurred, thresholded, threshold, 255, cv.THRESH_BINARY);
+    let contours = new cv.MatVector();
+    let hierarchy = new cv.Mat();
+    cv.findContours(thresholded, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
 
-        let contours = new cv.MatVector();
-        let hierarchy = new cv.Mat();
-        cv.findContours(thresholded, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+    if (contours.size() > 0) {
+        logMessage(`📸 Motion detected in ${contours.size()} areas.`);
+        ctx.strokeStyle = "yellow";
+        ctx.lineWidth = 3;
 
-        totalContours += contours.size();
+        for (let i = 0; i < contours.size(); i++) {
+            let rect = cv.boundingRect(contours.get(i));
 
-        if (contours.size() > 0) {
-            motionDetected = true;
-
-            ctx.strokeStyle = "yellow";
-            ctx.lineWidth = 3;
-            for (let i = 0; i < contours.size(); i++) {
-                let rect = cv.boundingRect(contours.get(i));
-
-                // Ignore small movements
-                if (rect.width > 10 && rect.height > 10) {
-                    ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
-                }
+            if (rect.width > 10 && rect.height > 10) {
+                ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
             }
         }
-
-        thresholded.delete();
-        contours.delete();
-        hierarchy.delete();
-    });
-
-    if (motionDetected) {
-        logMessage(`📸 Motion detected in ${totalContours} areas across thresholds.`);
     } else {
         logMessage("❌ No motion detected.");
+    }
+
+    // Debug mode: Display thresholded motion mask
+    if (debugMode) {
+        let debugCanvas = document.getElementById("debugCanvas");
+        if (!debugCanvas) {
+            debugCanvas = document.createElement("canvas");
+            debugCanvas.id = "debugCanvas";
+            debugCanvas.style.position = "absolute";
+            debugCanvas.style.top = "10px";
+            debugCanvas.style.right = "10px";
+            debugCanvas.style.width = "100px";
+            debugCanvas.style.height = "100px";
+            debugCanvas.style.border = "1px solid red";
+            document.body.appendChild(debugCanvas);
+        }
+        let debugCtx = debugCanvas.getContext("2d");
+        debugCanvas.width = thresholded.cols;
+        debugCanvas.height = thresholded.rows;
+        let imgData = new ImageData(new Uint8ClampedArray(thresholded.data), thresholded.cols, thresholded.rows);
+        debugCtx.putImageData(imgData, 0, 0);
     }
 
     // Cleanup
@@ -142,6 +147,9 @@ function detectMotion(previous, current, ctx) {
     grayCurr.delete();
     diff.delete();
     blurred.delete();
+    thresholded.delete();
+    contours.delete();
+    hierarchy.delete();
 }
 
 function stopRecording() {
@@ -204,11 +212,6 @@ function playbackFrames() {
     video.style.display = "none";
 }
 
-document.getElementById("switchCamera").addEventListener("click", () => {
-    currentFacingMode = currentFacingMode === "environment" ? "user" : "environment";
-    startCamera(currentFacingMode);
-});
-
 document.getElementById("recordButton").addEventListener("click", () => {
     if (!isRecording) {
         capturedFrames.length = 0;
@@ -229,5 +232,4 @@ document.getElementById("playbackButton").addEventListener("click", () => {
     playbackFrames();
 });
 
-// Start with the default camera (rear)
 startCamera(currentFacingMode);
