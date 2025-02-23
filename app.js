@@ -97,7 +97,7 @@ function detectMotion(previous, current, ctx) {
     let blurred = new cv.Mat();
     cv.GaussianBlur(diff, blurred, new cv.Size(5, 5), 0);
 
-    let thresholdValue = 15;
+    let thresholdValue = 10; // Lower value = more sensitivity
     let thresholded = new cv.Mat();
     cv.threshold(blurred, thresholded, thresholdValue, 255, cv.THRESH_BINARY);
 
@@ -107,6 +107,7 @@ function detectMotion(previous, current, ctx) {
 
     if (contours.size() > 0) {
         logMessage(`📸 Motion detected in ${contours.size()} areas.`);
+
         ctx.strokeStyle = "yellow";
         ctx.lineWidth = 3;
 
@@ -154,66 +155,6 @@ function showMotionMask(thresholded) {
     debugCtx.putImageData(imgData, 0, 0);
 }
 
-function stopRecording() {
-    if (isRecording) {
-        isRecording = false;
-        clearInterval(frameCaptureInterval);
-        document.getElementById("recordButton").disabled = false;
-        document.getElementById("stopButton").disabled = true;
-
-        if (capturedFrames.length > 0) {
-            document.getElementById("playbackButton").disabled = false;
-        }
-    }
-}
-
-function playbackFrames() {
-    if (isRecording) {
-        stopRecording();
-    }
-
-    const video = document.getElementById("cameraFeed");
-    const canvas = document.getElementById("captureCanvas");
-    const context = canvas.getContext("2d");
-
-    if (capturedFrames.length === 0) {
-        alert("No frames to playback!");
-        return;
-    }
-
-    let playbackIndex = 0;
-
-    const playbackInterval = setInterval(() => {
-        if (playbackIndex >= capturedFrames.length) {
-            clearInterval(playbackInterval);
-            canvas.style.display = "none";
-            video.style.display = "block";
-            return;
-        }
-
-        const frameDataURL = capturedFrames[playbackIndex];
-        let img = new Image();
-        img.onload = () => {
-            context.clearRect(0, 0, canvas.width, canvas.height);
-            context.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-            let frame = cv.imread(canvas);
-            if (previousFrame !== null) {
-                detectMotion(previousFrame, frame, context);
-            }
-
-            previousFrame = frame.clone();
-            frame.delete();
-        };
-        img.src = frameDataURL;
-
-        playbackIndex++;
-    }, 100);
-
-    canvas.style.display = "block";
-    video.style.display = "none";
-}
-
 document.getElementById("recordButton").addEventListener("click", () => {
     if (!isRecording) {
         capturedFrames.length = 0;
@@ -227,7 +168,13 @@ document.getElementById("recordButton").addEventListener("click", () => {
 });
 
 document.getElementById("stopButton").addEventListener("click", () => {
-    stopRecording();
+    clearInterval(frameCaptureInterval);
+    isRecording = false;
+    document.getElementById("recordButton").disabled = false;
+    document.getElementById("stopButton").disabled = true;
+    if (capturedFrames.length > 0) {
+        document.getElementById("playbackButton").disabled = false;
+    }
 });
 
 document.getElementById("playbackButton").addEventListener("click", () => {
