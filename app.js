@@ -97,24 +97,44 @@ function detectMotion(previous, current, ctx) {
     let blurred = new cv.Mat();
     cv.GaussianBlur(diff, blurred, new cv.Size(5, 5), 0);
 
-    let thresholded = new cv.Mat();
-    cv.threshold(blurred, thresholded, 20, 255, cv.THRESH_BINARY); // Adjust threshold here
+    let motionThresholds = [5, 10, 15, 20, 30]; // Range of thresholds
+    let motionDetected = false;
+    let totalContours = 0;
 
-    let contours = new cv.MatVector();
-    let hierarchy = new cv.Mat();
-    cv.findContours(thresholded, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+    motionThresholds.forEach(threshold => {
+        let thresholded = new cv.Mat();
+        cv.threshold(blurred, thresholded, threshold, 255, cv.THRESH_BINARY);
 
-    if (contours.size() > 0) {
-        ctx.strokeStyle = "yellow";
-        ctx.lineWidth = 3;
-        for (let i = 0; i < contours.size(); i++) {
-            let rect = cv.boundingRect(contours.get(i));
+        let contours = new cv.MatVector();
+        let hierarchy = new cv.Mat();
+        cv.findContours(thresholded, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
 
-            // Ignore small changes (noise)
-            if (rect.width > 10 && rect.height > 10) {
-                ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
+        totalContours += contours.size();
+
+        if (contours.size() > 0) {
+            motionDetected = true;
+
+            ctx.strokeStyle = "yellow";
+            ctx.lineWidth = 3;
+            for (let i = 0; i < contours.size(); i++) {
+                let rect = cv.boundingRect(contours.get(i));
+
+                // Ignore small movements
+                if (rect.width > 10 && rect.height > 10) {
+                    ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
+                }
             }
         }
+
+        thresholded.delete();
+        contours.delete();
+        hierarchy.delete();
+    });
+
+    if (motionDetected) {
+        logMessage(`📸 Motion detected in ${totalContours} areas across thresholds.`);
+    } else {
+        logMessage("❌ No motion detected.");
     }
 
     // Cleanup
@@ -122,9 +142,6 @@ function detectMotion(previous, current, ctx) {
     grayCurr.delete();
     diff.delete();
     blurred.delete();
-    thresholded.delete();
-    contours.delete();
-    hierarchy.delete();
 }
 
 function stopRecording() {
