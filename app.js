@@ -97,42 +97,50 @@ function detectMotion(previous, current, ctx) {
     let blurred = new cv.Mat();
     cv.GaussianBlur(diff, blurred, new cv.Size(5, 5), 0);
 
-    let thresholdValue = 10; // Lower value = more sensitivity
-    let thresholded = new cv.Mat();
-    cv.threshold(blurred, thresholded, thresholdValue, 255, cv.THRESH_BINARY);
+    let thresholdValues = [5, 10, 15, 20]; // Try multiple thresholds dynamically
+    let motionDetected = false;
 
-    let contours = new cv.MatVector();
-    let hierarchy = new cv.Mat();
-    cv.findContours(thresholded, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+    for (let threshold of thresholdValues) {
+        let thresholded = new cv.Mat();
+        cv.threshold(blurred, thresholded, threshold, 255, cv.THRESH_BINARY);
 
-    if (contours.size() > 0) {
-        logMessage(`📸 Motion detected in ${contours.size()} areas.`);
+        let contours = new cv.MatVector();
+        let hierarchy = new cv.Mat();
+        cv.findContours(thresholded, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
 
-        ctx.strokeStyle = "yellow";
-        ctx.lineWidth = 3;
+        if (contours.size() > 0) {
+            motionDetected = true;
+            logMessage(`📸 Motion detected at threshold ${threshold} in ${contours.size()} areas.`);
 
-        for (let i = 0; i < contours.size(); i++) {
-            let rect = cv.boundingRect(contours.get(i));
+            ctx.strokeStyle = "yellow";
+            ctx.lineWidth = 3;
 
-            if (rect.width > 10 && rect.height > 10) {
-                ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
+            for (let i = 0; i < contours.size(); i++) {
+                let rect = cv.boundingRect(contours.get(i));
+
+                if (rect.width > 10 && rect.height > 10) {
+                    ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
+                }
             }
         }
-    } else {
+
+        thresholded.delete();
+        contours.delete();
+        hierarchy.delete();
+    }
+
+    if (!motionDetected) {
         logMessage("❌ No motion detected.");
     }
 
     if (debugMode) {
-        showMotionMask(thresholded);
+        showMotionMask(diff);
     }
 
     grayPrev.delete();
     grayCurr.delete();
     diff.delete();
     blurred.delete();
-    thresholded.delete();
-    contours.delete();
-    hierarchy.delete();
 }
 
 function showMotionMask(thresholded) {
