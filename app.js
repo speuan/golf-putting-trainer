@@ -97,9 +97,9 @@ function detectMotion(previous, current, ctx) {
     let blurred = new cv.Mat();
     cv.GaussianBlur(diff, blurred, new cv.Size(5, 5), 0);
 
-    let threshold = 20;
+    let thresholdValue = 15;
     let thresholded = new cv.Mat();
-    cv.threshold(blurred, thresholded, threshold, 255, cv.THRESH_BINARY);
+    cv.threshold(blurred, thresholded, thresholdValue, 255, cv.THRESH_BINARY);
 
     let contours = new cv.MatVector();
     let hierarchy = new cv.Mat();
@@ -121,28 +121,10 @@ function detectMotion(previous, current, ctx) {
         logMessage("❌ No motion detected.");
     }
 
-    // Debug mode: Display thresholded motion mask
     if (debugMode) {
-        let debugCanvas = document.getElementById("debugCanvas");
-        if (!debugCanvas) {
-            debugCanvas = document.createElement("canvas");
-            debugCanvas.id = "debugCanvas";
-            debugCanvas.style.position = "absolute";
-            debugCanvas.style.top = "10px";
-            debugCanvas.style.right = "10px";
-            debugCanvas.style.width = "100px";
-            debugCanvas.style.height = "100px";
-            debugCanvas.style.border = "1px solid red";
-            document.body.appendChild(debugCanvas);
-        }
-        let debugCtx = debugCanvas.getContext("2d");
-        debugCanvas.width = thresholded.cols;
-        debugCanvas.height = thresholded.rows;
-        let imgData = new ImageData(new Uint8ClampedArray(thresholded.data), thresholded.cols, thresholded.rows);
-        debugCtx.putImageData(imgData, 0, 0);
+        showMotionMask(thresholded);
     }
 
-    // Cleanup
     grayPrev.delete();
     grayCurr.delete();
     diff.delete();
@@ -150,6 +132,26 @@ function detectMotion(previous, current, ctx) {
     thresholded.delete();
     contours.delete();
     hierarchy.delete();
+}
+
+function showMotionMask(thresholded) {
+    let debugCanvas = document.getElementById("debugCanvas");
+    if (!debugCanvas) {
+        debugCanvas = document.createElement("canvas");
+        debugCanvas.id = "debugCanvas";
+        debugCanvas.style.position = "absolute";
+        debugCanvas.style.top = "10px";
+        debugCanvas.style.right = "10px";
+        debugCanvas.style.width = "150px";
+        debugCanvas.style.height = "150px";
+        debugCanvas.style.border = "2px solid red";
+        document.body.appendChild(debugCanvas);
+    }
+    let debugCtx = debugCanvas.getContext("2d");
+    debugCanvas.width = thresholded.cols;
+    debugCanvas.height = thresholded.rows;
+    let imgData = new ImageData(new Uint8ClampedArray(thresholded.data), thresholded.cols, thresholded.rows);
+    debugCtx.putImageData(imgData, 0, 0);
 }
 
 function stopRecording() {
