@@ -1,25 +1,26 @@
+// Show spinner immediately
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('loadingSpinner').style.display = 'block';
-
-    // Try to check OpenCV is ready manually
-    checkOpenCVReady();
 });
 
-function checkOpenCVReady() {
-    if (typeof cv !== 'undefined' && typeof cv.Mat === 'function') {
-        console.log("✅ OpenCV.js is loaded and Mat() is available!");
-        document.getElementById('loadingSpinner').style.display = 'none';
-        enableImageUpload();
-    } else {
-        console.log("⏳ Waiting for OpenCV.js...");
-        setTimeout(checkOpenCVReady, 100);
-    }
+// Wait until OpenCV runtime is initialized
+function onOpenCvReady() {
+    console.log("✅ OpenCV.js is ready!");
+    document.getElementById('loadingSpinner').style.display = 'none';
+    document.getElementById('imageInput').disabled = false;
+
+    setupUploadHandler();
 }
 
-function enableImageUpload() {
-    const input = document.getElementById('imageInput');
-    input.disabled = false;
+// OpenCV will call this function once it's fully ready
+if (typeof cv === 'undefined') {
+    console.error("❌ OpenCV not loaded. Check your script src.");
+} else {
+    cv['onRuntimeInitialized'] = onOpenCvReady;
+}
 
+function setupUploadHandler() {
+    const input = document.getElementById('imageInput');
     input.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -32,13 +33,7 @@ function enableImageUpload() {
             canvas.height = img.height;
             ctx.drawImage(img, 0, 0);
 
-            // Try to detect ball now
-            try {
-                detectGolfBall(canvas);
-            } catch (err) {
-                console.error("❌ Error detecting ball: ", err);
-                alert("OpenCV is not ready yet or detection failed.");
-            }
+            detectGolfBall(canvas);
         };
         img.src = URL.createObjectURL(file);
     });
