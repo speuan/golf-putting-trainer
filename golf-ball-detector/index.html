@@ -5,8 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Golf Ball Detector - Step 1</title>
     <link rel="stylesheet" href="style.css">
-    <script src="https://docs.opencv.org/4.x/opencv.js" defer></script>
-    <script src="app.js" defer></script>
 </head>
 <body>
     <div id="loadingSpinner">Loading OpenCV...</div>
@@ -17,5 +15,10 @@
     <div class="canvas-container">
         <canvas id="imageCanvas"></canvas>
     </div>
+
+    <!-- Load OpenCV first -->
+    <script src="https://docs.opencv.org/4.x/opencv.js"></script>
+    <!-- Then load our app -->
+    <script src="app.js"></script>
 </body>
 </html>

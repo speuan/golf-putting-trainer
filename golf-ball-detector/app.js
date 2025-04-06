@@ -1,23 +1,33 @@
 let cvLoaded = false;
 
-// Spinner visible immediately
+// Show spinner immediately
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('loadingSpinner').style.display = 'block';
-    waitForOpenCV(() => {
-        console.log("✅ OpenCV.js is ready!");
-        document.getElementById('loadingSpinner').style.display = 'none';
-        cvLoaded = true;
-    });
 });
 
-// Poll until OpenCV is ready
-function waitForOpenCV(callbackFn) {
-    if (typeof cv !== 'undefined' && typeof cv.Mat === 'function') {
-        callbackFn();
-    } else {
-        console.log("Waiting for OpenCV to be ready...");
-        setTimeout(() => waitForOpenCV(callbackFn), 50);
+// OpenCV.js callback when ready
+function onOpenCvReady() {
+    console.log("✅ OpenCV.js downloaded — now waiting for runtime...");
+    if (cv && cv['onRuntimeInitialized']) {
+        cv['onRuntimeInitialized'] = () => {
+            console.log("✅ OpenCV.js runtime initialized!");
+            document.getElementById('loadingSpinner').style.display = 'none';
+            cvLoaded = true;
+        };
     }
+}
+
+// Hook into loading
+if (typeof cv === 'undefined') {
+    console.log("Waiting for OpenCV script...");
+    let interval = setInterval(() => {
+        if (typeof cv !== 'undefined') {
+            clearInterval(interval);
+            onOpenCvReady();
+        }
+    }, 50);
+} else {
+    onOpenCvReady();
 }
 
 // Image upload handling
