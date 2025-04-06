@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
 function waitForCVLoad() {
   if (typeof cv !== 'undefined' && cv['onRuntimeInitialized']) {
     cv['onRuntimeInitialized'] = () => {
-      console.log("✅ OpenCV runtime initialized!");
+      console.log("✅ OpenCV.js runtime initialized!");
       document.getElementById('loadingSpinner').style.display = 'none';
       cvLoaded = true;
       enableImageUpload();
@@ -44,9 +44,11 @@ function detectGolfBall(canvas) {
     const gray = new cv.Mat();
     const circles = new cv.Mat();
 
+    // Preprocessing
     cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
     cv.GaussianBlur(gray, gray, new cv.Size(9, 9), 2, 2);
 
+    // Detect circles
     cv.HoughCircles(gray, circles, cv.HOUGH_GRADIENT, 1, 30, 100, 30, 5, 100);
 
     if (!circles.empty()) {
@@ -54,13 +56,15 @@ function detectGolfBall(canvas) {
         const x = circles.data32F[i * 3];
         const y = circles.data32F[i * 3 + 1];
         const radius = circles.data32F[i * 3 + 2];
+        // Draw detected circles
         cv.circle(src, new cv.Point(x, y), radius, [255, 0, 0, 255], 4);
       }
+      // Only redraw if circles found
+      cv.imshow('imageCanvas', src);
     } else {
-      console.log("No circles detected.");
+      console.log("No circles detected — keeping original image.");
+      // No need to overwrite canvas
     }
-
-    cv.imshow('imageCanvas', src);
 
     src.delete();
     gray.delete();
